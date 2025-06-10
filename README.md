@@ -1,4 +1,4 @@
-# MIDT Task Simulator
+# MIDT fMRI task Simulator
 
 Interactive demonstration of the Monetary Incentive Delay Task (MIDT) used in fMRI research.
 
@@ -7,11 +7,6 @@ This simulator shows exactly what participants experience during MIDT fMRI studi
 - **Phase 1:** Cue presentation (reward anticipation)
 - **Phase 2:** Target response (quick reaction)
 - **Phase 3:** Outcome feedback (reward processing)
-
-## Usage
-- **Easy Mode:** For demonstrations and learning
-- **Realistic Mode:** Actual research conditions
-- **Spacebar:** Respond to white squares
 
 ## Research Context
 Used in the study: "Brain Reward Function in Young People with Cannabis Use Disorder: an fMRI Study"
