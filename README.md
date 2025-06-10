@@ -15,11 +15,11 @@ This simulator shows exactly what participants experience during MIDT fMRI studi
 
 ## Research Context
 Used in the study: "Brain Reward Function in Young People with Cannabis Use Disorder: an fMRI Study"
-- First fMRI study examining reward circuits in clinically diagnosed CUD
+- fMRI study examining reward circuits in clinically diagnosed CUD
 - Presented at OHBM 2025
 
 ## Demo
-🎮 **[Try it live here](https://YOUR_USERNAME.github.io/midt-task-simulator)**
+🎮 **[Try it live here](https://arush-arun.github.io/OHBM_MIDT_poster)**
 
 ## Citation
 If you use this simulator, please cite:
@@ -27,18 +27,4 @@ If you use this simulator, please cite:
 
 ## Contact
 - Email: uqahonne@uq.edu.au
-B
-A
-A
-A
-A
-A
-A
-A
-A
-A
-A
-A
-A
-A
 - Institution: University of Queensland, Centre of Advanced Imaging
