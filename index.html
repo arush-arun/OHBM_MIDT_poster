@@ -1,0 +1,464 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>MIDT Task Simulator - Participant Experience</title>
+    <style>
+        body {
+            margin: 0;
+            padding: 0;
+            background: #000;
+            color: #fff;
+            font-family: 'Arial', sans-serif;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            min-height: 100vh;
+            overflow: hidden;
+        }
+
+        .scanner-view {
+            width: 800px;
+            height: 600px;
+            background: #000;
+            border: 3px solid #333;
+            border-radius: 10px;
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+            align-items: center;
+            position: relative;
+            font-size: 24px;
+        }
+
+        .stimulus {
+            font-size: 72px;
+            text-align: center;
+            margin: 20px 0;
+            transition: all 0.3s ease;
+        }
+
+        .reward-cue {
+            color: #4CAF50;
+            font-size: 96px;
+        }
+
+        .neutral-cue {
+            color: #9E9E9E;
+            font-size: 96px;
+        }
+
+        .target {
+            width: 80px;
+            height: 80px;
+            background: #fff;
+            margin: 0 auto;
+            animation: pulse 0.3s ease-in-out;
+        }
+
+        @keyframes pulse {
+            0% { transform: scale(1); }
+            50% { transform: scale(1.1); }
+            100% { transform: scale(1); }
+        }
+
+        .feedback {
+            font-size: 48px;
+            text-align: center;
+            font-weight: bold;
+        }
+
+        .success {
+            color: #4CAF50;
+        }
+
+        .failure {
+            color: #F44336;
+        }
+
+        .neutral-feedback {
+            color: #9E9E9E;
+        }
+
+        .fixation {
+            font-size: 72px;
+            color: #fff;
+        }
+
+        .instructions {
+            position: absolute;
+            top: 20px;
+            left: 20px;
+            font-size: 14px;
+            background: rgba(0,0,0,0.7);
+            padding: 10px;
+            border-radius: 5px;
+            max-width: 300px;
+        }
+
+        .status {
+            position: absolute;
+            bottom: 20px;
+            left: 20px;
+            font-size: 16px;
+        }
+
+        .earnings {
+            position: absolute;
+            bottom: 20px;
+            right: 20px;
+            font-size: 20px;
+            color: #4CAF50;
+            font-weight: bold;
+        }
+
+        .phase-indicator {
+            position: absolute;
+            top: 20px;
+            right: 20px;
+            font-size: 14px;
+            background: rgba(0,0,0,0.7);
+            padding: 10px;
+            border-radius: 5px;
+        }
+
+        .controls {
+            position: absolute;
+            bottom: 80px;
+            left: 50%;
+            transform: translateX(-50%);
+            display: flex;
+            gap: 20px;
+        }
+
+        .control-btn {
+            background: #2196F3;
+            color: white;
+            border: none;
+            padding: 12px 24px;
+            border-radius: 5px;
+            cursor: pointer;
+            font-size: 14px;
+            transition: background 0.3s;
+        }
+
+        .control-btn:hover {
+            background: #1976D2;
+        }
+
+        .control-btn:disabled {
+            background: #666;
+            cursor: not-allowed;
+        }
+
+        .timer-bar {
+            position: absolute;
+            bottom: 0;
+            left: 0;
+            height: 4px;
+            background: #2196F3;
+            transition: width linear;
+        }
+
+        .reaction-prompt {
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            background: rgba(255, 255, 255, 0.1);
+            padding: 20px;
+            border-radius: 10px;
+            font-size: 18px;
+            animation: glow 1s ease-in-out infinite alternate;
+        }
+
+        @keyframes glow {
+            from { box-shadow: 0 0 10px rgba(255, 255, 255, 0.3); }
+            to { box-shadow: 0 0 20px rgba(255, 255, 255, 0.6); }
+        }
+    </style>
+</head>
+<body>
+    <div class="scanner-view">
+        <div class="instructions">
+            <strong>MIDT Task Instructions:</strong><br>
+            • Watch the screen carefully<br>
+            • When you see a white square, press SPACEBAR as quickly as possible<br>
+            • Try to earn as much money as you can!<br>
+            • △ = Potential reward | ○ = No money possible
+        </div>
+
+        <div class="phase-indicator" id="phaseIndicator">
+            Waiting to start...
+        </div>
+
+        <div class="stimulus" id="stimulus">
+            Press START to begin
+        </div>
+
+        <div class="reaction-prompt" id="reactionPrompt" style="display: none;">
+            Press SPACEBAR quickly!
+        </div>
+
+        <div class="status" id="status">
+            Trial: 0/8 | Ready to start
+        </div>
+
+        <div class="earnings" id="earnings">
+            Total Earnings: $0.00
+        </div>
+
+        <div class="timer-bar" id="timerBar"></div>
+
+        <div class="controls">
+            <button class="control-btn" id="startBtn" onclick="startTask()">START TASK</button>
+            <button class="control-btn" id="resetBtn" onclick="resetTask()">RESET</button>
+            <button class="control-btn" id="pauseBtn" onclick="togglePause()" disabled>PAUSE</button>
+        </div>
+    </div>
+
+    <script>
+        let currentTrial = 0;
+        let totalTrials = 8;
+        let earnings = 0;
+        let currentPhase = 'waiting';
+        let trialStartTime = 0;
+        let reactionTime = 0;
+        let taskRunning = false;
+        let paused = false;
+        let currentTrialType = '';
+        let targetVisible = false;
+        let responseDetected = false;
+
+        // Trial types: reward amounts and neutral
+        const trialTypes = [
+            { type: 'reward', amount: 5, cue: '△', text: '+$5' },
+            { type: 'reward', amount: 1, cue: '△', text: '+$1' },
+            { type: 'reward', amount: 0.5, cue: '△', text: '+$0.50' },
+            { type: 'neutral', amount: 0, cue: '○', text: '$0' },
+            { type: 'reward', amount: 1, cue: '△', text: '+$1' },
+            { type: 'neutral', amount: 0, cue: '○', text: '$0' },
+            { type: 'reward', amount: 5, cue: '△', text: '+$5' },
+            { type: 'neutral', amount: 0, cue: '○', text: '$0' }
+        ];
+
+        // Keyboard event listener
+        document.addEventListener('keydown', function(event) {
+            if (event.code === 'Space' && targetVisible && !responseDetected) {
+                event.preventDefault();
+                handleResponse();
+            }
+        });
+
+        function updateDisplay(content, className = '') {
+            const stimulus = document.getElementById('stimulus');
+            stimulus.innerHTML = content;
+            stimulus.className = 'stimulus ' + className;
+        }
+
+        function updatePhase(phase) {
+            document.getElementById('phaseIndicator').textContent = phase;
+            currentPhase = phase;
+        }
+
+        function updateStatus(text) {
+            document.getElementById('status').textContent = text;
+        }
+
+        function updateEarnings() {
+            document.getElementById('earnings').textContent = `Total Earnings: $${earnings.toFixed(2)}`;
+        }
+
+        function startTimer(duration, callback) {
+            const timerBar = document.getElementById('timerBar');
+            timerBar.style.width = '100%';
+            timerBar.style.transition = `width ${duration}ms linear`;
+            
+            setTimeout(() => {
+                timerBar.style.width = '0%';
+            }, 50);
+
+            setTimeout(callback, duration);
+        }
+
+        function handleResponse() {
+            if (!targetVisible || responseDetected) return;
+            
+            responseDetected = true;
+            reactionTime = Date.now() - trialStartTime;
+            
+            // Hide target and reaction prompt
+            targetVisible = false;
+            document.getElementById('reactionPrompt').style.display = 'none';
+            
+            // Immediate feedback
+            updateDisplay('...', '');
+            updateStatus(`Trial: ${currentTrial}/${totalTrials} | Response time: ${reactionTime}ms`);
+            
+            // Brief delay before feedback
+            setTimeout(() => {
+                showFeedback();
+            }, 500);
+        }
+
+        function showCue() {
+            const trial = trialTypes[currentTrial - 1];
+            currentTrialType = trial;
+            
+            updatePhase('PHASE 1: CUE (Reward Anticipation)');
+            updateDisplay(trial.cue + '<br><span style="font-size: 48px;">' + trial.text + '</span>', 
+                         trial.type === 'reward' ? 'reward-cue' : 'neutral-cue');
+            updateStatus(`Trial: ${currentTrial}/${totalTrials} | Cue phase`);
+            
+            startTimer(2500, showTarget);
+        }
+
+        function showTarget() {
+            updatePhase('PHASE 2: TARGET (Quick Response Required)');
+            updateDisplay('<div class="target"></div>', '');
+            updateStatus(`Trial: ${currentTrial}/${totalTrials} | Respond quickly!`);
+            
+            // Show reaction prompt
+            document.getElementById('reactionPrompt').style.display = 'block';
+            
+            targetVisible = true;
+            responseDetected = false;
+            trialStartTime = Date.now();
+            
+            // Target duration varies (150-400ms for ~66% success rate)
+            const targetDuration = 200 + Math.random() * 200;
+            
+            setTimeout(() => {
+                if (!responseDetected) {
+                    // Miss - no response in time
+                    targetVisible = false;
+                    document.getElementById('reactionPrompt').style.display = 'none';
+                    updateDisplay('', '');
+                    updateStatus(`Trial: ${currentTrial}/${totalTrials} | Too slow!`);
+                    
+                    setTimeout(() => {
+                        showFeedback(false);
+                    }, 500);
+                }
+            }, targetDuration);
+        }
+
+        function showFeedback(successful = true) {
+            updatePhase('PHASE 3: FEEDBACK (Outcome Processing)');
+            
+            const trial = currentTrialType;
+            let feedbackText = '';
+            let feedbackClass = '';
+            
+            if (responseDetected && successful !== false) {
+                // Successful response
+                if (trial.type === 'reward') {
+                    earnings += trial.amount;
+                    feedbackText = `You won $${trial.amount.toFixed(2)}!`;
+                    feedbackClass = 'success';
+                } else {
+                    feedbackText = 'No money at stake';
+                    feedbackClass = 'neutral-feedback';
+                }
+            } else {
+                // Failed response (too slow or missed)
+                if (trial.type === 'reward') {
+                    feedbackText = 'You did not win';
+                    feedbackClass = 'failure';
+                } else {
+                    feedbackText = 'No money at stake';
+                    feedbackClass = 'neutral-feedback';
+                }
+            }
+            
+            updateDisplay(feedbackText, 'feedback ' + feedbackClass);
+            updateEarnings();
+            updateStatus(`Trial: ${currentTrial}/${totalTrials} | ${feedbackText}`);
+            
+            startTimer(1500, nextTrial);
+        }
+
+        function nextTrial() {
+            if (currentTrial >= totalTrials) {
+                endTask();
+                return;
+            }
+            
+            // Inter-trial interval with fixation
+            updatePhase('INTER-TRIAL INTERVAL');
+            updateDisplay('+', 'fixation');
+            updateStatus(`Trial: ${currentTrial}/${totalTrials} | Rest period`);
+            
+            startTimer(2000, () => {
+                currentTrial++;
+                showCue();
+            });
+        }
+
+        function endTask() {
+            updatePhase('TASK COMPLETE');
+            updateDisplay(`Task Complete!<br><span style="font-size: 36px;">Final Earnings: $${earnings.toFixed(2)}</span>`, 'success');
+            updateStatus(`Completed ${totalTrials} trials | Average reaction time: ${reactionTime ? Math.round(reactionTime) : 'N/A'}ms`);
+            
+            document.getElementById('startBtn').disabled = false;
+            document.getElementById('pauseBtn').disabled = true;
+            taskRunning = false;
+        }
+
+        function startTask() {
+            if (taskRunning) return;
+            
+            taskRunning = true;
+            currentTrial = 1;
+            earnings = 0;
+            updateEarnings();
+            
+            document.getElementById('startBtn').disabled = true;
+            document.getElementById('pauseBtn').disabled = false;
+            
+            // Initial instructions
+            updatePhase('TASK STARTING');
+            updateDisplay('Get ready...<br><span style="font-size: 36px;">Remember: Press SPACEBAR when you see the white square!</span>', '');
+            updateStatus('Starting in 3 seconds...');
+            
+            setTimeout(() => {
+                showCue();
+            }, 3000);
+        }
+
+        function resetTask() {
+            taskRunning = false;
+            paused = false;
+            currentTrial = 0;
+            earnings = 0;
+            targetVisible = false;
+            responseDetected = false;
+            
+            updateDisplay('Press START to begin', '');
+            updatePhase('Waiting to start...');
+            updateStatus('Trial: 0/8 | Ready to start');
+            updateEarnings();
+            
+            document.getElementById('startBtn').disabled = false;
+            document.getElementById('pauseBtn').disabled = true;
+            document.getElementById('reactionPrompt').style.display = 'none';
+            document.getElementById('timerBar').style.width = '0%';
+        }
+
+        function togglePause() {
+            paused = !paused;
+            if (paused) {
+                updateDisplay('PAUSED<br><span style="font-size: 24px;">Click RESUME to continue</span>', '');
+                document.getElementById('pauseBtn').textContent = 'RESUME';
+            } else {
+                document.getElementById('pauseBtn').textContent = 'PAUSE';
+                // Resume from current state
+            }
+        }
+
+        // Initialize
+        resetTask();
+    </script>
+</body>
+</html>
